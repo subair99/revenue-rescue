@@ -10,6 +10,8 @@ Don’t use AI calling to make *more* calls; use it to recover money and operati
 
 It extracts structured resolutions, respects strict safety boundaries (no PII/financial data collection), and writes actionable outcomes back to business systems—turning unstructured phone chaos into governed, measurable ROI.
 
+![Revenue Rescue Dashboard](pictures/1-revenue_resque_dashboard.png)
+
 ---
 
 ## Architecture & Workflow
