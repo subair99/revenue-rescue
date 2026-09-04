@@ -1,4 +1,4 @@
-# 🚀 Revenue Rescue
+# Revenue Rescue
 **Autonomous, Governed Revenue Recovery & Operations Agent**
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
@@ -12,7 +12,7 @@ It extracts structured resolutions, respects strict safety boundaries (no PII/fi
 
 ---
 
-## 🏗️ Architecture & Workflow
+## Architecture & Workflow
 
 ```mermaid
 sequenceDiagram
@@ -36,7 +36,7 @@ sequenceDiagram
 
 ---
 
-## ✨ Criteria Alignment
+## Criteria Alignment
 
 1. **Real-World Impact (Measurable ROI)**: Solves direct financial bleed. A SaaS company recovering just 10% of 1,000 failed payments/month saves $5,000+. The system pays for itself on Day 1.
 2. **Quality of Idea (Multi-Step Cascade)**: Not a simple one-shot reminder. It evaluates *who* to call, executes the call, and uses retry cascade logic (no answer → wait 2h → retry → escalate).
@@ -45,7 +45,7 @@ sequenceDiagram
 
 ---
 
-## ⚡ Quick Start & Setup
+## Quick Start & Setup
 
 This project uses [`uv`](https://github.com/astral-sh/uv) for blazing-fast Python dependency management.
 
@@ -54,9 +54,31 @@ This project uses [`uv`](https://github.com/astral-sh/uv) for blazing-fast Pytho
 - Node.js 18+ and `npm`
 - CALL-E CLI installed and authenticated (`npm install -g @call-e/cli` + `calle auth login`)
 
-### 2. Backend Setup (FastAPI)
+### 2. Initial Project Setup
+If you are building this from scratch or verifying the environment, run these commands:
 ```bash
-# Clone and navigate
+# 1. Initialize project and dependencies
+mkdir revenue-rescue && cd revenue-rescue
+uv init --no-readme --vcs none
+rm main.py
+uv add fastapi uvicorn pydantic python-dotenv httpx
+
+# 2. Install CALL-E Skill and CLI globally
+npx -y skills add https://github.com/CALLE-AI/call-e-integrations --skill calle -g
+sudo npm install -g @call-e/cli
+
+# 3. Create the Next.js app in a 'frontend' folder
+npx create-next-app@latest frontend --typescript --tailwind --eslint --app --no-src-dir --import-alias "@/*"
+cd frontend
+
+# 4. Install icons and a lightweight charting library
+npm install lucide-react recharts
+```
+
+### 3. Else Use This Setup
+```bash
+# 1. Backend Setup (FastAPI)
+git clone https://github.com/subair99/revenue-rescue
 cd revenue-rescue
 
 # Initialize and install Python dependencies
@@ -68,19 +90,39 @@ cp .env.example .env
 
 # Start the backend server
 uv run uvicorn src.main:app --reload --port 8000
-```
 
-### 3. Frontend Setup (Next.js Dashboard)
-```bash
+# 3. Frontend Setup (Next.js Dashboard)
 cd frontend
 npm install
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the Revenue Leakage Intelligence dashboard.
 
+### 4. CALL-E Authentication (Critical Step)
+```bash
+# Step A: Generate login URL
+env CALLE_SOURCE=skills_sh CALLE_INTEGRATION=skills_sh_skill CALLE_INTEGRATION_VERSION=0.1.0 calle auth login --start-only --no-browser-open
+
+# Step B: Copy the generated URL into your web browser and complete authorization.
+
+# Step C: Finalize login in the terminal
+env CALLE_SOURCE=skills_sh CALLE_INTEGRATION=skills_sh_skill CALLE_INTEGRATION_VERSION=0.1.0 calle auth login --no-browser-open
+
+# Step D: Verify authentication and tools
+env CALLE_SOURCE=skills_sh CALLE_INTEGRATION=skills_sh_skill CALLE_INTEGRATION_VERSION=0.1.0 calle auth status
+env CALLE_SOURCE=skills_sh CALLE_INTEGRATION=skills_sh_skill CALLE_INTEGRATION_VERSION=0.1.0 calle mcp tools
+```
+
+### 5. Test the Backend (Optional but Recommended)
+```bash
+curl -X POST http://localhost:8000/webhook/revenue-rescue \
+  -H "Content-Type: application/json" \
+  -d @fixtures/failed_payment.json
+  ```
+
 ---
 
-## 🛡️ Safety Boundaries (Critical)
+## Safety Boundaries (Critical)
 
 This project is designed with enterprise-grade safety constraints to prevent disqualification and ensure compliance:
 1. **NO PCI/PII Collection**: The `SYSTEM_PROMPT_TEMPLATE` explicitly forbids the agent from asking for, accepting, or repeating credit card numbers, CVVs, passwords, or SSNs.
@@ -90,7 +132,7 @@ This project is designed with enterprise-grade safety constraints to prevent dis
 
 ---
 
-## 📡 API & Example Payloads
+## API & Example Payloads
 
 ### Trigger Webhook
 **Endpoint**: `POST /webhook/revenue-rescue`
@@ -122,7 +164,7 @@ CALL-E is enforced to return strictly typed JSON, enabling reliable downstream w
 
 ---
 
-## 🧪 Dry-Run Mode (For Judges & Testing)
+## Dry-Run Mode
 
 To test the complete logic flow **without burning live CALL-E credits or making real phone calls**, set the following in your `.env` file:
 
@@ -132,9 +174,23 @@ CALL_E_DRY_RUN=true
 
 When enabled, the `execute_rescue_call` function intercepts the CLI invocation and returns a realistic, schema-compliant mock response (`payment_promised`), allowing judges to verify the end-to-end loop instantly.
 
+## Live Test
+
+1. **Use Your Own Number:** Update the `customer_phone` in the frontend's `triggerRescue` function (or in your `fixtures/failed_payment.json`) to **your actual mobile number** in E.164 format (e.g., `+15551234567`).
+2. **Demonstrate the Safety Rule (Crucial for Judging!):** 
+   * When the agent asks how you want to pay, **do not say your real credit card number**. 
+   * Instead, say: *"I don't want to say my card number over the phone. Can you just email me the invoice and I'll update it online?"*
+   * The agent should politely agree. This perfectly demonstrates the **Safety Boundaries** judging criteria!
+3. **Watch the Terminal:** While you are on the phone, look at your backend terminal. You will see the `plan_call`, `run_call`, and `get_call_run` polling steps happening in real-time. This is the **"Technical Proof"** you need for your video.
+4. **Check the Final JSON:** Once you hang up, the terminal will print the final structured JSON (the `resultSchema`). It should show `"outcome": "payment_promised"` and `"escalation_required": false`.
+
+```env
+CALL_E_DRY_RUN=false
+```
+
 ---
 
-## 📦 Deliverables Checklist
+## Deliverables Checklist
 
 - [x] **Backend**: Python/FastAPI with genuine runtime CALL-E CLI execution (`plan_call` → `run_call` → `get_call_run`).
 - [x] **Frontend**: Next.js Dashboard with "Revenue at Risk" and "Leakage Intelligence" analytics.
@@ -144,13 +200,19 @@ When enabled, the `execute_rescue_call` function intercepts the CLI invocation a
 
 ---
 
-## 🎬 Demo Video
+## Demo Video
 
 Watch the full <3 minute walkthrough of the Decision Engine, CALL-E runtime execution, and structured write-back:  
 🔗 *[Insert Unlisted YouTube/Vimeo Link Here]*
 
 ---
 
-*Built for the CALL-E Hackathon 2026. Turning operational chaos into governed, measurable ROI.*
+## Licence
+
+**MIT License.**
+
+*Built for the CALL-E Hackathon 2026.*
+
+*Turning operational chaos into governed, measurable ROI.*
 
 ---
