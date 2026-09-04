@@ -34,6 +34,45 @@ sequenceDiagram
     BE->>DB: Write-back: "Recovery in Progress" / "Escalate to Human"
 ```
 
+```mermaid
+graph TD
+    %% Node Definitions
+    Stripe([External Trigger<br/>e.g., Stripe])
+    BE{Revenue Rescue<br/>Backend FastAPI}
+    DE[Decision Engine]
+    CALLE((CALL-E<br/>SDK / CLI))
+    DB[(Database / CRM)]
+
+    %% Workflow Edges
+    Stripe -->|1. Webhook: Failed Payment $249| BE
+    BE -->|2. Evaluate Business Rules| DE
+    DE -->|3. Proceed: >$50, Not Disputed, Quiet Hours| BE
+    
+    BE -->|4. plan_call: Goal + Safety Prompt| CALLE
+    CALLE -->|5. Return: plan_id + confirm_token| BE
+    
+    BE -->|6. run_call: confirm_token| CALLE
+    CALLE -->|7. Return: run_id Async execution| BE
+    
+    BE -->|8. get_call_run: Poll for status| CALLE
+    CALLE -->|9. Return: Structured JSON resultSchema| BE
+    
+    BE -->|10. Write-back: Recovery in Progress / Escalate| DB
+
+    %% Styling for better visual appeal
+    classDef trigger fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef backend fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef engine fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef calle fill:#ff9,stroke:#f66,stroke-width:3px;
+    classDef db fill:#ddf,stroke:#333,stroke-width:2px;
+
+    class Stripe trigger;
+    class BE backend;
+    class DE engine;
+    class CALLE calle;
+    class DB db;
+```
+
 ---
 
 ## Criteria Alignment
@@ -47,12 +86,10 @@ sequenceDiagram
 
 ## Quick Start & Setup
 
-This project uses [`uv`](https://github.com/astral-sh/uv) for blazing-fast Python dependency management.
-
 ### 1. Prerequisites
 - Python 3.12+ and [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
 - Node.js 18+ and `npm`
-- CALL-E CLI installed and authenticated (`npm install -g @call-e/cli` + `calle auth login`)
+- CALL-E CLI installed and authenticated
 
 ### 2. Initial Project Setup
 If you are building this from scratch or verifying the environment, run these commands:
@@ -205,6 +242,8 @@ CALL_E_DRY_RUN=false
 Watch the full <3 minute walkthrough of the Decision Engine, CALL-E runtime execution, and structured write-back:  
 🔗 *[Insert Unlisted YouTube/Vimeo Link Here]*
 
+[![Watch it here](pictures/video-thumbnail.png)](https://youtu.be/x2_reUGsFzo?si=m6iSPKpjZvE8q-Qa)
+
 ---
 
 ## Licence
@@ -212,7 +251,5 @@ Watch the full <3 minute walkthrough of the Decision Engine, CALL-E runtime exec
 **MIT License.**
 
 *Built for the CALL-E Hackathon 2026.*
-
-*Turning operational chaos into governed, measurable ROI.*
 
 ---
