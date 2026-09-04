@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from .schemas import WebhookPayload, CallResult
 from .decision_engine import evaluate_trigger
@@ -8,6 +9,16 @@ from .call_engine import execute_rescue_call
 load_dotenv()
 
 app = FastAPI(title="Revenue Rescue", version="0.1.0")
+
+# ── ADD CORS MIDDLEWARE ──────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+# ──────────────────────────────────────────────────────────────
 
 @app.post("/webhook/revenue-rescue")
 async def revenue_rescue_webhook(payload: WebhookPayload):
@@ -24,10 +35,8 @@ async def revenue_rescue_webhook(payload: WebhookPayload):
     # 3. Downstream actions
     if result.outcome.value == "payment_promised":
         print(f"[SUCCESS] Recovery in progress. Promised: {result.promised_date}")
-        # TODO: Update Airtable/Postgres
     elif result.outcome.value == "disputed":
         print(f"[ESCALATE] Dispute detected: {result.dispute_reason}")
-        # TODO: Create Zendesk ticket
     
     return {"status": "completed", "result": result.model_dump()}
 
