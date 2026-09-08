@@ -2,11 +2,10 @@ import os
 import hashlib
 import json
 import asyncio
-import subprocess
 from typing import Dict, Any
 from .schemas import WebhookPayload, CallResult, Outcome, CALL_E_RESULT_SCHEMA
 
-# Telemetry env vars
+# Telemetry env vars required by CALL-E
 CALLE_ENV = {
     **os.environ,
     "CALLE_SOURCE": "skills_sh",
@@ -14,22 +13,18 @@ CALLE_ENV = {
     "CALLE_INTEGRATION_VERSION": "0.1.0"
 }
 
+# Compliant system prompt that passes CALL-E safety filters
 SYSTEM_PROMPT_TEMPLATE = """
-You are an automated billing assistant for [Company].
-Your goal is to call the customer about a failed payment of ${amount}.
-Offer to resend the invoice or ask when they will update their card.
+Call the customer to inform them that an invoice payment of ${amount} failed. 
+Direct them to check their email for a secure link to update their billing information. 
 
-STRICT SAFETY RULE: Never ask for, accept, or repeat credit card numbers,
-CVVs, or passwords. If the user tries to give you a card number, politely
-tell them you cannot accept it over the phone and they must use the secure
-link in the email.
-
-Extract the following structured data at the end of the call:
-- outcome: One of "payment_promised", "disputed", "no_answer", "voicemail", "callback_requested"
-- promised_date: If they promised to pay, the date (YYYY-MM-DD)
-- dispute_reason: If disputed, the reason
-- escalation_required: Boolean indicating if human review is needed
-- notes: Brief summary of the conversation
+STRICT SAFETY RULE: Do not ask for, collect, or handle any payment details, 
+card numbers, account credentials, verification codes, or billing information over the phone. 
+If the customer answers, deliver the notice clearly, answer only general non-sensitive questions, 
+and direct any billing update action to the secure email link or official support channel; then end politely. 
+If the customer refuses or is concerned, do not pressure them and advise them to use official support channels. 
+If no one answers, leave a short voicemail with the same general notice and instruction to check email, 
+without sensitive details, then report that nobody answered live.
 """
 
 def make_idempotency_key(payload: WebhookPayload, attempt: int) -> str:
@@ -37,9 +32,9 @@ def make_idempotency_key(payload: WebhookPayload, attempt: int) -> str:
     raw = f"{payload.customer_id}-{payload.trigger_id}-{attempt}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
-async def _run_calle_command(args: list) -> Dict[str, Any]:
-    """Helper to run calle CLI commands asynchronously."""
-    cmd = ["calle"] + args
+async def _run_calle_cli(args: list) -> Dict[str, Any]:
+    """Helper to run calle CLI commands asynchronously with --json flag."""
+    cmd = ["calle"] + args + ["--json"]
     
     process = await asyncio.create_subprocess_exec(
         *cmd,
@@ -57,16 +52,12 @@ async def _run_calle_command(args: list) -> Dict[str, Any]:
 
 async def execute_rescue_call(payload: WebhookPayload, attempt: int = 1) -> CallResult:
     """
-    Executes the 2-step CALL-E workflow:
-    1. plan_call → get plan_id and confirm_token
-    2. run_call → execute the call
-    3. get_call_run → poll for results
+    Executes the CALL-E workflow using the official CLI with --json flag.
     """
-    
     idempotency_key = make_idempotency_key(payload, attempt)
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(amount=payload.amount)
     
-    # ── DRY-RUN MODE ──────────────────────────────────────────
+    # ── DRY-RUN MODE ─────────────────────────────────────────
     if os.getenv("CALL_E_DRY_RUN", "false").lower() == "true":
         print(f"[DRY RUN] Simulating call to {payload.customer_phone}")
         return CallResult(
@@ -80,59 +71,54 @@ async def execute_rescue_call(payload: WebhookPayload, attempt: int = 1) -> Call
         # STEP 1: Plan the call
         print(f"[CALL-E] Step 1/3: Planning call for {payload.customer_phone}...")
         
-        plan_payload = {
-            "to_phones": [payload.customer_phone],
-            "goal": system_prompt,
-            "user_input": f"Call {payload.customer_phone} about failed payment of ${payload.amount}"
-        }
-        
-        plan_result = await _run_calle_command([
-            "plan_call",
-            json.dumps(plan_payload)
+        plan_result = await _run_calle_cli([
+            "call", "plan",
+            "--to-phone", payload.customer_phone,
+            "--goal", system_prompt
         ])
         
-        plan_id = plan_result["plan_id"]
+        structured_content = plan_result.get("result", {}).get("structuredContent", {})
+        plan_id = structured_content.get("plan_id")
         
-        if not plan_result.get("ready_to_run", False):
-            raise Exception(f"Call plan not ready: {plan_result.get('clarifying_questions', [])}")
+        if not structured_content.get("ready_to_run", False):
+            questions = structured_content.get("clarifying_questions", [])
+            raise Exception(f"Call plan not ready. Reason: {questions[0] if questions else 'Unknown'}")
         
-        confirm_token = plan_result.get("confirm_token")
+        confirm_token = structured_content.get("confirm_token")
         if not confirm_token:
             raise Exception("No confirm_token returned from plan_call")
         
         # STEP 2: Run the call
         print(f"[CALL-E] Step 2/3: Executing call (plan_id: {plan_id})...")
         
-        run_result = await _run_calle_command([
-            "run_call",
-            json.dumps({
-                "plan_id": plan_id,
-                "confirm_token": confirm_token
-            })
+        run_result = await _run_calle_cli([
+            "call", "run",
+            "--plan-id", plan_id,
+            "--confirm-token", confirm_token
         ])
         
-        run_id = run_result["run_id"]
+        run_structured = run_result.get("result", {}).get("structuredContent", {})
+        run_id = run_structured.get("run_id")
         print(f"[CALL-E] Call started (run_id: {run_id})")
         
         # STEP 3: Poll for completion
         print(f"[CALL-E] Step 3/3: Polling for results...")
         
         while True:
-            status_result = await _run_calle_command([
-                "get_call_run",
-                json.dumps({"run_id": run_id, "limit": 100})
+            status_result = await _run_calle_cli([
+                "call", "status",
+                "--run-id", run_id
             ])
             
-            status = status_result.get("status", "UNKNOWN")
+            status_structured = status_result.get("result", {}).get("structuredContent", {})
+            status = status_structured.get("status", "UNKNOWN")
             print(f"[CALL-E] Status: {status}")
             
             if status in ["COMPLETED", "NO ANSWER", "FAILED", "DECLINED"]:
-                # Extract structured results
-                result_data = status_result.get("result", {})
+                result_data = status_structured.get("result", {})
                 extracted = result_data.get("extracted", {})
                 transcript = result_data.get("transcript", "")
                 
-                # Map to our CallResult schema
                 outcome_str = extracted.get("outcome", "no_answer")
                 try:
                     outcome = Outcome(outcome_str)
@@ -148,8 +134,7 @@ async def execute_rescue_call(payload: WebhookPayload, attempt: int = 1) -> Call
                     transcript=transcript
                 )
             
-            # Wait before polling again
-            await asyncio.sleep(2)
+            await asyncio.sleep(3) # Poll every 3 seconds
             
     except Exception as e:
         print(f"[CALL-E ERROR] {e}")
