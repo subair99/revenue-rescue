@@ -1,3 +1,10 @@
+---
+name: "revenue-rescue"
+title: "Revenue Rescue"
+description: "Autonomous, governed revenue recovery agent skill that detects high-value operational exceptions (e.g., failed payments), evaluates business rules, and executes multi-step CALL-E phone interactions with strict safety boundaries."
+tags: ["revenue", "finance", "safety", "governed", "automation", "payments"]
+---
+
 # Revenue Rescue Skill
 
 ## Overview
