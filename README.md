@@ -241,9 +241,6 @@ CALL_E_DRY_RUN=false
 
 ## Demo Video
 
-Watch the full <3 minute walkthrough of the Decision Engine, CALL-E runtime execution, and structured write-back:  
-🔗 *[Insert Unlisted YouTube/Vimeo Link Here]*
-
 [![Watch it here](pictures/video-thumbnail.png)](https://youtu.be/x2_reUGsFzo?si=m6iSPKpjZvE8q-Qa)
 
 ---
