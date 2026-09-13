@@ -1,25 +1,37 @@
+```bash
 #!/bin/bash
-# dry-run-test.sh
-# Tests the Revenue Rescue webhook logic using a mock payload.
-# Requires the backend to be running locally with CALL_E_DRY_RUN=true.
+# ==============================================================================
+# NOTE: EXTERNAL BACKEND TEMPLATE
+# This script is a TEMPLATE demonstrating how an external agent host or backend 
+# would trigger this workflow. 
+#
+# THIS SKILL PACKAGE DOES NOT INCLUDE A RUNNABLE BACKEND.
+# To test the CALL-E CLI directly in dry-run mode without a backend, follow 
+# the "No-Call CLI Example" below.
+# ==============================================================================
 
-echo "🧪 Starting Revenue Rescue Dry-Run Test..."
-echo "⚠️  Ensure your backend is running and CALL_E_DRY_RUN=true in your .env file."
+echo "🧪 Revenue Rescue Dry-Run Test (External Backend Template)"
+echo "️  This skill package does not include a runnable backend. This script is a template."
+echo ""
 
-# Send the mock payload to the local backend
-RESPONSE=$(curl -s -X POST http://localhost:8000/webhook/revenue-rescue \
-  -H "Content-Type: application/json" \
-  -d @fixtures/mock-payload.json)
+echo "📥 Expected Input Payload (from scripts/fixtures/mock-payload.json):"
+cat "$(dirname "$0")/fixtures/mock-payload.json"
+echo ""
 
-echo "📥 Raw Response:"
-echo "$RESPONSE" | jq .
+echo "💡 No-Call CLI Example (Test directly without a backend):"
+echo "   1. Ensure CALL-E is authenticated: calle auth login"
+echo "   2. Run a dry-run plan (no live call placed):"
+echo "      calle call plan --to-phone +1-555-0100 --goal 'Test dry-run' --json"
+echo ""
 
-# Basic validation check
-OUTCOME=$(echo "$RESPONSE" | jq -r '.result.outcome // empty')
-
-if [ "$OUTCOME" == "payment_promised" ]; then
-    echo "✅ SUCCESS: Dry-run returned expected structured outcome."
-else
-    echo "❌ FAIL: Expected 'payment_promised', got '$OUTCOME'."
-    exit 1
-fi
+echo "✅ Mock Expected Structured Output (what the external host would receive):"
+cat << 'EOF'
+{
+  "outcome": "payment_promised",
+  "promised_date": "2026-09-10",
+  "dispute_reason": null,
+  "escalation_required": false,
+  "notes": "Customer agreed to update card via secure email link."
+}
+EOF
+```

@@ -1,9 +1,14 @@
 # Revenue Rescue
 
+> [!IMPORTANT]
+> **This is an Agent Skill definition package, not a runnable backend.** 
+> This package does not include a backend implementation. Long-form guidance is intentionally placed in this `docs/` directory per repository guidelines. 
+> To execute calls, an external agent host (e.g., Claude Code, Cursor, MCP client) or custom backend must be implemented to invoke the CALL-E CLI using the definitions provided here.
+
 **Agent skill for packaging revenue recovery phone-call workflows with strict safety boundaries, structured result schemas, and dry-run-by-default execution.**
 
 > [!NOTE]
-> This skill is designed for AI agents to package, schedule, and safely execute phone-call workflows. It defaults to dry-run/preview mode and requires explicit, destination-bound human approval before placing any live calls.
+> This skill defaults to dry-run/preview mode and requires explicit, destination-bound human approval before placing any live calls.
 
 ---
 
